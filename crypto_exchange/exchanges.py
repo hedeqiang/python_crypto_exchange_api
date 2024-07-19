@@ -18,6 +18,7 @@ class ExchangeName(Enum):
     KUCOIN = auto()
     MEXC = auto()
     GATEIO = auto()
+    BYBIT = auto()
 
 
 @dataclass
@@ -42,7 +43,7 @@ class Exchange(ABC):
         pass
 
     def send_request(self, method: str, endpoint: str, params: Optional[Dict[str, Any]] = None, signed: bool = True) -> \
-    Dict[str, Any]:
+            Dict[str, Any]:
         url = self.base_url + endpoint
         params, headers = self._prepare_request(method, endpoint, params, signed)
         response = requests.request(method, url, headers=headers,
@@ -193,6 +194,34 @@ class GateIO(Exchange):
             })
         return params, headers
 
+class Bybit(Exchange):
+    def get_default_base_url(self) -> str:
+        return 'https://api.bybit.com'
+
+    def _prepare_request(self, method: str, endpoint: str, params: Optional[Dict[str, Any]], signed: bool) -> tuple:
+        timestamp = str(int(time.time() * 1000))
+        recv_window = '5000'
+        headers = {
+            'Content-Type': 'application/json',
+            'X-BAPI-API-KEY': self.config.api_key,
+            'X-BAPI-TIMESTAMP': timestamp,
+            'X-BAPI-RECV-WINDOW': recv_window,
+        }
+        if signed:
+            if params is None:
+                params = {}
+            query_string = '&'.join([f"{k}={v}" for k, v in params.items()]) if params else ''
+            if method == 'GET':
+                signature_payload = f"{timestamp}{self.config.api_key}{recv_window}{query_string}"
+            else:
+                body_string = json.dumps(params)
+                signature_payload = f"{timestamp}{self.config.api_key}{recv_window}{body_string}"
+            signature = hmac.new(self.config.api_secret.encode('utf-8'), signature_payload.encode('utf-8'),
+                                 hashlib.sha256).hexdigest()
+            headers['X-BAPI-SIGN'] = signature
+
+        return params, headers
+
 
 class ExchangeFactory:
     @staticmethod
@@ -203,7 +232,8 @@ class ExchangeFactory:
             ExchangeName.BITGET: Bitget,
             ExchangeName.KUCOIN: Kucoin,
             ExchangeName.MEXC: MEXC,
-            ExchangeName.GATEIO: GateIO
+            ExchangeName.GATEIO: GateIO,
+            ExchangeName.BYBIT: Bybit
         }
         if exchange_name in exchanges:
             return exchanges[exchange_name](config)

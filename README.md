@@ -9,6 +9,7 @@ A Python framework for accessing multiple cryptocurrency exchanges' APIs.
 - Kucoin
 - MEXC
 - Gate.io
+- Bybit
 
 ## Installation
 
@@ -31,6 +32,7 @@ bitget_config = ExchangeConfig(api_key='your_bitget_api_key', api_secret='your_b
 kucoin_config = ExchangeConfig(api_key='your_kucoin_api_key', api_secret='your_kucoin_api_secret', api_passphrase='your_kucoin_api_passphrase')
 mexc_config = ExchangeConfig(api_key='your_mexc_api_key', api_secret='your_mexc_api_secret')
 gateio_config = ExchangeConfig(api_key='your_gateio_api_key', api_secret='your_gateio_api_secret')
+bybit_config = ExchangeConfig(api_key='your_bybit_api_key', api_secret='your_bybit_api_secret')
 
 # get exchanges to the manager
 binance = manager.add_exchange(ExchangeName.BINANCE, binance_config).get_exchange()
@@ -39,6 +41,7 @@ bitget = manager.add_exchange(ExchangeName.BITGET, bitget_config).get_exchange()
 kucoin= manager.add_exchange(ExchangeName.KUCOIN, kucoin_config).get_exchange()
 mexc = manager.add_exchange(ExchangeName.MEXC, mexc_config).get_exchange()
 gate = manager.add_exchange(ExchangeName.GATEIO, gateio_config).get_exchange()
+bybit = manager.add_exchange(ExchangeName.BYBIT, bybit_config).get_exchange()
 ```
 ### Explanation of the `signed` Parameter
 > The `signed` parameter indicates whether the request requires authentication. 
@@ -168,7 +171,7 @@ print(response)
 ```python
 # Withdraw funds from your Gate.io account
 params = {
-    'withdraw_order_id':'123456', # 用户端订单编号,最长32个，输入内容只能包含数字、字母、下划线(_)、中划线(-) 或者点(.)
+    'withdraw_order_id':'123456', 
     'currency': 'BTC',
     'address': 'your_btc_address',
     'amount': '0.01',
@@ -178,6 +181,30 @@ response = gate.send_request('POST', '/api/v4/withdrawals', params=params, signe
 print(response)
 ```
 
+### Bybit
+#### Public Endpoint (Market Data)
+```python
+# Get the latest price of BTC/USDT
+response = bybit.send_request('GET', '/v5/market/tickers', params={'symbol': 'BTCUSDT', 'category': 'spot'},
+                                  signed=False)
+print(response)
+```
+
+#### Private Endpoint (Withdraw Funds)
+```python
+# Withdraw funds from your Bybit account
+params = {
+    'coin': 'BTC',
+    'chain': 'BTC',
+    'address': 'your_btc_address',
+    'amount': '0.01',
+    'timestamp': 1672196561407,
+    'forceChain': 0,
+    'accountType': 'FUND'
+}
+response = bybit.send_request('POST', '/v5/asset/withdraw/create', params=params, signed=True)
+print(response)
+```
 ...
 
 # License
