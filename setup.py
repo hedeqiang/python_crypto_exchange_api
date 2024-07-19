@@ -1,12 +1,17 @@
 from setuptools import setup, find_packages
 
+
+
 setup(
     name='crypto_exchange_api',
-    version='0.1.0',
+    version='0.1.1',
     description='A Python framework for accessing multiple cryptocurrency exchanges APIs',
     author='hedeqiang',
     author_email='laravel_code@163.com',
-    url='https://github.com/hedeqiang/crypto_exchange_api',
+    url='https://github.com/hedeqiang/python_crypto_exchange_api',
+    license='MIT',
+    long_description=open('README.md').read(),
+    long_description_content_type="text/markdown",
     packages=find_packages(),
     install_requires=[
         'requests',
