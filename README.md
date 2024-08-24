@@ -10,6 +10,7 @@ A Python framework for accessing multiple cryptocurrency exchanges' APIs.
 - MEXC
 - Gate.io
 - Bybit
+- Kraken
 
 ## Installation
 
@@ -33,6 +34,7 @@ kucoin_config = ExchangeConfig(api_key='your_kucoin_api_key', api_secret='your_k
 mexc_config = ExchangeConfig(api_key='your_mexc_api_key', api_secret='your_mexc_api_secret')
 gateio_config = ExchangeConfig(api_key='your_gateio_api_key', api_secret='your_gateio_api_secret')
 bybit_config = ExchangeConfig(api_key='your_bybit_api_key', api_secret='your_bybit_api_secret')
+kraken_config = ExchangeConfig(api_key='your_kraken_api_key', api_secret='your_kraken_api_secret')
 
 # get exchanges to the manager
 binance = manager.add_exchange(ExchangeName.BINANCE, binance_config).get_exchange()
@@ -42,6 +44,7 @@ kucoin= manager.add_exchange(ExchangeName.KUCOIN, kucoin_config).get_exchange()
 mexc = manager.add_exchange(ExchangeName.MEXC, mexc_config).get_exchange()
 gate = manager.add_exchange(ExchangeName.GATEIO, gateio_config).get_exchange()
 bybit = manager.add_exchange(ExchangeName.BYBIT, bybit_config).get_exchange()
+kraken = manager.add_exchange(ExchangeName.KRAKEN,kraken_config).get_exchange()
 ```
 ### Explanation of the `signed` Parameter
 > The `signed` parameter indicates whether the request requires authentication. 
@@ -203,6 +206,29 @@ params = {
     'accountType': 'FUND'
 }
 response = bybit.send_request('POST', '/v5/asset/withdraw/create', params=params, signed=True)
+print(response)
+```
+
+### Kraken
+
+#### Public Endpoint (Market Data)
+
+```python
+# Get the latest price of BTC/USD
+response = kraken.send_request('GET', '/0/public/Ticker', params={'pair': 'XBTUSD'}, signed=False)
+print(response)
+```
+
+#### Private Endpoint (Withdraw Funds)
+```python
+# Withdraw funds from your Kraken account
+params = {
+    'asset': 'BTC',
+    'key': 'your_withdrawal_key',
+    'amount': '0.01',
+    'address':'your_btc_address'
+}
+response = kraken.send_request('POST', '/0/private/Withdraw', params=params, signed=True)
 print(response)
 ```
 ...

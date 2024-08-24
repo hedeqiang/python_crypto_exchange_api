@@ -3,6 +3,7 @@ import hashlib
 import hmac
 import json
 import time
+from urllib.parse import urlencode
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional
 from dataclasses import dataclass
@@ -19,6 +20,7 @@ class ExchangeName(Enum):
     MEXC = auto()
     GATEIO = auto()
     BYBIT = auto()
+    KRAKEN = auto()
 
 
 @dataclass
@@ -46,8 +48,8 @@ class Exchange(ABC):
             Dict[str, Any]:
         url = self.base_url + endpoint
         params, headers = self._prepare_request(method, endpoint, params, signed)
-        response = requests.request(method, url, headers=headers,
-                                    params=params if method == "GET" else json.dumps(params))
+
+        response = requests.request(method, url, headers=headers, data=params)
         return response.json()
 
 
@@ -194,6 +196,7 @@ class GateIO(Exchange):
             })
         return params, headers
 
+
 class Bybit(Exchange):
     def get_default_base_url(self) -> str:
         return 'https://api.bybit.com'
@@ -223,6 +226,28 @@ class Bybit(Exchange):
         return params, headers
 
 
+class Kraken(Exchange):
+    def get_default_base_url(self) -> str:
+        return 'https://api.kraken.com'
+
+    def _prepare_request(self, method: str, endpoint: str, params: Optional[Dict[str, Any]], signed: bool) -> tuple:
+        headers = {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'API-Key': self.config.api_key,
+            'API-Sign': ''
+        }
+        if signed:
+            if params is None:
+                params = {}
+            if 'nonce' not in params:
+                params['nonce'] = str(int(time.time() * 1000))
+            postdata = urlencode(params)
+            message = endpoint.encode() + hashlib.sha256((params['nonce'] + postdata).encode()).digest()
+            signature = hmac.new(base64.b64decode(self.config.api_secret), message, hashlib.sha512).digest()
+            headers['API-Sign'] = base64.b64encode(signature).decode()
+        return params, headers
+
+
 class ExchangeFactory:
     @staticmethod
     def create_exchange(exchange_name: ExchangeName, config: ExchangeConfig) -> Exchange:
@@ -233,7 +258,8 @@ class ExchangeFactory:
             ExchangeName.KUCOIN: Kucoin,
             ExchangeName.MEXC: MEXC,
             ExchangeName.GATEIO: GateIO,
-            ExchangeName.BYBIT: Bybit
+            ExchangeName.BYBIT: Bybit,
+            ExchangeName.KRAKEN: Kraken
         }
         if exchange_name in exchanges:
             return exchanges[exchange_name](config)
