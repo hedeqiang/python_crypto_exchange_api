@@ -49,8 +49,8 @@ class Exchange(ABC):
         url = self.base_url + endpoint
         params, headers = self._prepare_request(method, endpoint, params, signed)
 
-        response = requests.request(method, url, headers=headers, data=params)
-        return response.json()
+        response = requests.request(method, url, headers=headers, params=params)
+        return response.text
 
 
 class Binance(Exchange):
@@ -79,21 +79,29 @@ class OKX(Exchange):
 
     def _prepare_request(self, method: str, endpoint: str, params: Optional[Dict[str, Any]], signed: bool) -> tuple:
         timestamp = datetime.now(timezone.utc).isoformat(timespec='milliseconds').replace('+00:00', 'Z')
-        if signed:
-            if params is None:
-                params = {}
-            prehash = timestamp + method.upper() + endpoint + (json.dumps(params) if params else '')
-            signature = base64.b64encode(
-                hmac.new(self.config.api_secret.encode(), prehash.encode(), hashlib.sha256).digest()).decode()
-        else:
-            signature = ''
         headers = {
             'OK-ACCESS-KEY': self.config.api_key,
-            'OK-ACCESS-SIGN': signature,
             'OK-ACCESS-TIMESTAMP': timestamp,
             'OK-ACCESS-PASSPHRASE': self.config.api_passphrase,
             'Content-Type': 'application/json'
         }
+
+        if signed:
+            if method == 'GET':
+                params_str = ''
+                if params:
+                    sorted_params = sorted(params.items())
+                    params_str = '?' + '&'.join([f"{k}={v}" for k, v in sorted_params])
+                prehash = timestamp + method.upper() + endpoint + params_str
+            else:
+                body = json.dumps(params) if params else ''
+                prehash = timestamp + method.upper() + endpoint + body
+
+            signature = base64.b64encode(
+                hmac.new(self.config.api_secret.encode(), prehash.encode(), hashlib.sha256).digest()
+            ).decode()
+            headers['OK-ACCESS-SIGN'] = signature
+
         return params, headers
 
 
@@ -153,20 +161,26 @@ class MEXC(Exchange):
         return 'https://api.mexc.com'
 
     def _prepare_request(self, method: str, endpoint: str, params: Optional[Dict[str, Any]], signed: bool) -> tuple:
+        headers = {
+            'X-MEXC-APIKEY': self.config.api_key,
+            'Content-Type': 'application/json'
+        }
+
         if signed:
             timestamp = str(int(time.time() * 1000))
             if params is None:
                 params = {}
             params['timestamp'] = timestamp
-            query_string = '&'.join([f"{k}={v}" for k, v in params.items()])
+
+            if method == 'GET':
+                query_string = '&'.join([f"{k}={v}" for k, v in sorted(params.items())])
+            else:
+                query_string = json.dumps(params)
+
             signature = hmac.new(self.config.api_secret.encode(), query_string.encode(), hashlib.sha256).hexdigest()
             params['signature'] = signature
-        headers = {
-            'X-MEXC-APIKEY': self.config.api_key,
-            'Content-Type': 'application/json'
-        }
-        return params, headers
 
+        return params, headers
 
 class GateIO(Exchange):
     def get_default_base_url(self) -> str:
