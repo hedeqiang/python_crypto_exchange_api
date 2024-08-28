@@ -11,6 +11,7 @@ A Python framework for accessing multiple cryptocurrency exchanges' APIs.
 - Gate.io
 - Bybit
 - Kraken
+- BTSE
 
 ## Installation
 

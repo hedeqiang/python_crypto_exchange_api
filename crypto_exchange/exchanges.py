@@ -21,6 +21,7 @@ class ExchangeName(Enum):
     GATEIO = auto()
     BYBIT = auto()
     KRAKEN = auto()
+    BTSE = auto()
 
 
 @dataclass
@@ -44,8 +45,8 @@ class Exchange(ABC):
     def _prepare_request(self, method: str, endpoint: str, params: Optional[Dict[str, Any]], signed: bool) -> tuple:
         pass
 
-    def send_request(self, method: str, endpoint: str, params: Optional[Dict[str, Any]] = None, signed: bool = True) -> \
-            Dict[str, Any]:
+    def send_request(self, method: str, endpoint: str, params: Optional[Dict[str, Any]] = None,
+                     signed: bool = True) -> str:
         url = self.base_url + endpoint
         params, headers = self._prepare_request(method, endpoint, params, signed)
 
@@ -182,6 +183,7 @@ class MEXC(Exchange):
 
         return params, headers
 
+
 class GateIO(Exchange):
     def get_default_base_url(self) -> str:
         return 'https://api.gateio.ws'
@@ -262,6 +264,34 @@ class Kraken(Exchange):
         return params, headers
 
 
+class BTSE(Exchange):
+    def get_default_base_url(self) -> str:
+        return 'https://api.btse.com/spot'
+
+    def _prepare_request(self, method: str, endpoint: str, params: Optional[Dict[str, Any]], signed: bool) -> tuple:
+        headers = {
+            'Content-Type': 'application/json'
+        }
+
+        if signed:
+            request_nonce = str(int(time.time() * 1000))
+            body_str = ""
+            if method == "POST" and params:
+                body_str = json.dumps(params, separators=(',', ':'), sort_keys=True, ensure_ascii=False)
+
+            concatenated_str = endpoint + request_nonce + body_str
+            signature = hmac.new(self.config.api_secret.encode('utf-8'), concatenated_str.encode('utf-8'),
+                                 hashlib.sha384).hexdigest()
+
+            headers.update({
+                "request-api": self.config.api_key,
+                "request-nonce": request_nonce,
+                "request-sign": signature,
+            })
+
+        return params, headers
+
+
 class ExchangeFactory:
     @staticmethod
     def create_exchange(exchange_name: ExchangeName, config: ExchangeConfig) -> Exchange:
@@ -273,7 +303,8 @@ class ExchangeFactory:
             ExchangeName.MEXC: MEXC,
             ExchangeName.GATEIO: GateIO,
             ExchangeName.BYBIT: Bybit,
-            ExchangeName.KRAKEN: Kraken
+            ExchangeName.KRAKEN: Kraken,
+            ExchangeName.BTSE: BTSE
         }
         if exchange_name in exchanges:
             return exchanges[exchange_name](config)
