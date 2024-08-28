@@ -92,11 +92,10 @@ class OKX(Exchange):
                 params_str = ''
                 if params:
                     sorted_params = sorted(params.items())
-                    params_str = '?' + '&'.join([f"{k}={v}" for k, v in sorted_params])
-                prehash = timestamp + method.upper() + endpoint + params_str
+                    params_str = '?' + urlencode(sorted_params)
+                prehash = timestamp + method + endpoint + params_str
             else:
-                body = json.dumps(params) if params else ''
-                prehash = timestamp + method.upper() + endpoint + body
+                prehash = timestamp + method + endpoint + (json.dumps(params) if params else '')
 
             signature = base64.b64encode(
                 hmac.new(self.config.api_secret.encode(), prehash.encode(), hashlib.sha256).digest()

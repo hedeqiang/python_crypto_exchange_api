@@ -1,10 +1,8 @@
 from setuptools import setup, find_packages
 
-
-
 setup(
     name='crypto_exchange_api',
-    version='0.1.7',
+    version='0.1.8',
     description='A Python framework for accessing multiple cryptocurrency exchanges APIs',
     author='hedeqiang',
     author_email='laravel_code@163.com',
