@@ -22,6 +22,7 @@ class ExchangeName(Enum):
     BYBIT = auto()
     KRAKEN = auto()
     BTSE = auto()
+    BITRUE = auto()
 
 
 @dataclass
@@ -291,6 +292,33 @@ class BTSE(Exchange):
         return params, headers
 
 
+class Bitrue(Exchange):
+    def get_default_base_url(self) -> str:
+        return 'https://www.bitrue.com'
+
+    def _prepare_request(self, method: str, endpoint: str, params: Optional[Dict[str, Any]], signed: bool) -> tuple:
+        headers = {
+            'Content-Type': 'application/x-www-form-urlencoded',  # Changed to x-www-form-urlencoded
+            'X-MBX-APIKEY': self.config.api_key,
+        }
+
+        if signed:
+            if params is None:
+                params = {}
+            params['recvWindow'] = 5000
+            params['timestamp'] = str(int(time.time() * 1000))
+
+            signature = self._generate_signature(params)
+            params['signature'] = signature
+
+        return params, headers
+
+    def _generate_signature(self, params: Dict[str, Any]) -> str:
+        sorted_params = sorted(params.items())
+        query_string = '&'.join([f"{k}={v}" for k, v in sorted_params])
+        signature = hmac.new(self.config.api_secret.encode('utf-8'), query_string.encode('utf-8'),hashlib.sha256).hexdigest()
+        return signature
+
 class ExchangeFactory:
     @staticmethod
     def create_exchange(exchange_name: ExchangeName, config: ExchangeConfig) -> Exchange:
@@ -303,7 +331,8 @@ class ExchangeFactory:
             ExchangeName.GATEIO: GateIO,
             ExchangeName.BYBIT: Bybit,
             ExchangeName.KRAKEN: Kraken,
-            ExchangeName.BTSE: BTSE
+            ExchangeName.BTSE: BTSE,
+            ExchangeName.BITRUE: Bitrue,
         }
         if exchange_name in exchanges:
             return exchanges[exchange_name](config)
